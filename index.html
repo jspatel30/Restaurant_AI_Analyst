@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>RestIQ — AI Restaurant Analyst</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#111118;--surface2:#1a1a24;--surface3:#222230;
+  --border:#2a2a3a;--border2:#3a3a50;
+  --accent:#ff6b35;--accent2:#ffad35;--green:#2dcc7a;--red:#ff4757;
+  --blue:#4f9dff;--purple:#a855f7;
+  --text:#f0eee8;--text2:#9896a8;--text3:#5a5870;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --radius:12px;--radius-sm:8px;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;line-height:1.6;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:1000;opacity:.4}
+.shell{max-width:960px;margin:0 auto;padding:0 24px}
+header{padding:32px 0 0;border-bottom:1px solid var(--border)}
+.header-inner{display:flex;align-items:center;justify-content:space-between;padding-bottom:20px}
+.logo{font-family:var(--font-display);font-size:22px;font-weight:800;letter-spacing:-.5px}
+.logo span{color:var(--accent)}
+.logo-sub{font-size:11px;font-family:var(--font-mono);color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-top:2px}
+.badge{background:var(--surface2);border:1px solid var(--border2);padding:4px 10px;border-radius:20px;font-family:var(--font-mono);font-size:11px;color:var(--accent)}
+
+/* UPLOAD */
+.upload-section{padding:40px 0}
+.section-label{font-family:var(--font-mono);font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:16px}
+.upload-zone{border:1px dashed var(--border2);border-radius:var(--radius);padding:48px 32px;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface);position:relative;overflow:hidden}
+.upload-zone::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(255,107,53,.06),transparent 60%);pointer-events:none}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--accent);background:var(--surface2)}
+.upload-icon{font-size:36px;margin-bottom:12px;opacity:.5}
+.upload-title{font-family:var(--font-display);font-size:18px;font-weight:700;margin-bottom:6px}
+.upload-sub{color:var(--text2);font-size:13px;margin-bottom:20px}
+.upload-btn{background:var(--accent);color:#fff;padding:10px 24px;border-radius:var(--radius-sm);font-family:var(--font-display);font-weight:600;font-size:13px;cursor:pointer;border:none}
+.upload-btn:hover{background:#ff8255}
+.format-chips{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:20px}
+.chip{background:var(--surface2);border:1px solid var(--border);padding:4px 10px;border-radius:20px;font-family:var(--font-mono);font-size:11px;color:var(--text3)}
+#file-input{display:none}
+.report-type-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}
+.rtype{border:1px solid var(--border);background:var(--surface);padding:7px 14px;border-radius:20px;font-size:12px;font-family:var(--font-mono);cursor:pointer;color:var(--text2);transition:all .15s}
+.rtype:hover{border-color:var(--border2);color:var(--text)}
+.rtype.active{border-color:var(--accent);background:rgba(255,107,53,.1);color:var(--accent)}
+.context-bar{display:flex;gap:12px;align-items:flex-end;margin-top:16px;flex-wrap:wrap}
+.context-bar input,.context-bar select{background:var(--surface);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13px;flex:1;outline:none;min-width:120px}
+.context-bar input:focus,.context-bar select:focus{border-color:var(--border2)}
+.context-bar input::placeholder{color:var(--text3)}
+.context-bar label{font-size:12px;color:var(--text3);display:block;margin-bottom:4px;font-family:var(--font-mono)}
+.cfield{flex:1;min-width:120px}
+.analyse-btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#0a0a0f;border:none;padding:10px 28px;border-radius:var(--radius-sm);font-family:var(--font-display);font-weight:700;font-size:14px;cursor:pointer;white-space:nowrap;align-self:flex-end}
+.analyse-btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 4px 20px rgba(255,107,53,.35)}
+.analyse-btn:disabled{opacity:.4;cursor:not-allowed}
+.file-preview{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px;margin-top:16px;display:none;align-items:center;gap:12px}
+.file-preview.show{display:flex}
+.file-icon{width:36px;height:36px;background:rgba(255,107,53,.12);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.file-name{font-family:var(--font-mono);font-size:13px;color:var(--text)}
+.file-meta{font-size:12px;color:var(--text3);margin-top:2px}
+.file-remove{margin-left:auto;background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:4px}
+.file-remove:hover{color:var(--red)}
+
+/* LOADING */
+.loading-section{display:none;padding:48px 0;text-align:center}
+.loading-section.show{display:block}
+.spinner{width:48px;height:48px;border:2px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-title{font-family:var(--font-display);font-size:16px;font-weight:700;margin-bottom:8px}
+.loading-steps{font-family:var(--font-mono);font-size:12px;color:var(--text3)}
+.loading-step{padding:4px 0;transition:color .3s}
+.loading-step.active{color:var(--accent)}.loading-step.done{color:var(--green)}
+
+/* RESULTS */
+.results-section{display:none;padding:32px 0 60px}
+.results-section.show{display:block}
+.results-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:16px;flex-wrap:wrap}
+.results-title{font-family:var(--font-display);font-size:24px;font-weight:800;letter-spacing:-.5px}
+.results-meta{font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-top:4px}
+.reset-btn{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;cursor:pointer;white-space:nowrap}
+.reset-btn:hover{border-color:var(--border2);color:var(--text)}
+
+/* PULSE */
+.pulse-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:28px}
+.pulse-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;position:relative;overflow:hidden}
+.pulse-card::after{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.pulse-card.up::after{background:var(--green)}.pulse-card.down::after{background:var(--red)}
+.pulse-card.warn::after{background:var(--accent2)}.pulse-card.info::after{background:var(--blue)}
+.pulse-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.pulse-value{font-family:var(--font-display);font-size:22px;font-weight:700}
+.pulse-sub{font-size:11px;color:var(--text2);margin-top:3px}
+
+/* INSIGHT BLOCKS */
+.insights-grid{display:flex;flex-direction:column;gap:16px}
+.insight-block{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;animation:fadeUp .4s ease both}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.insight-header{padding:16px 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .15s;user-select:none}
+.insight-header:hover{background:var(--surface2)}
+.insight-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;padding:3px 8px;border-radius:4px;flex-shrink:0}
+.tag-critical{background:rgba(255,71,87,.15);color:var(--red);border:1px solid rgba(255,71,87,.3)}
+.tag-opportunity{background:rgba(45,204,122,.15);color:var(--green);border:1px solid rgba(45,204,122,.3)}
+.tag-warning{background:rgba(255,173,53,.15);color:var(--accent2);border:1px solid rgba(255,173,53,.3)}
+.tag-insight{background:rgba(79,157,255,.15);color:var(--blue);border:1px solid rgba(79,157,255,.3)}
+.tag-action{background:rgba(168,85,247,.15);color:var(--purple);border:1px solid rgba(168,85,247,.3)}
+.insight-title{font-family:var(--font-display);font-size:15px;font-weight:600;flex:1}
+.insight-chevron{color:var(--text3);font-size:18px;transition:transform .2s;flex-shrink:0}
+.insight-block.open .insight-chevron{transform:rotate(180deg)}
+.insight-body{max-height:0;overflow:hidden;transition:max-height .4s ease}
+.insight-block.open .insight-body{max-height:3000px}
+
+/* TABS */
+.insight-tabs{display:flex;border-bottom:1px solid var(--border);padding:0 20px;background:var(--surface)}
+.itab{font-family:var(--font-mono);font-size:11px;letter-spacing:.5px;padding:10px 14px;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s}
+.itab:hover{color:var(--text2)}
+.itab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.itab-panel{display:none;padding:20px}
+.itab-panel.active{display:block}
+
+/* CHART */
+.chart-wrap{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;margin-bottom:16px}
+.chart-title{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:14px}
+.chart-canvas-wrap{position:relative;height:240px}
+.chart-canvas-wrap.tall{height:320px}
+.chart-loading{display:flex;align-items:center;justify-content:center;height:200px;gap:10px;color:var(--text3);font-family:var(--font-mono);font-size:12px}
+.chart-loading .mini-spin{width:16px;height:16px;border:2px solid var(--surface3);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite}
+.chart-error{padding:16px;color:var(--text3);font-family:var(--font-mono);font-size:11px;text-align:center}
+
+/* HEATMAP */
+.heatmap-wrap{overflow-x:auto;padding-bottom:4px}
+.hm-label-row{display:flex;margin-bottom:3px;padding-left:60px}
+.hm-col-label{flex:1;font-family:var(--font-mono);font-size:9px;color:var(--text3);text-align:center;min-width:32px}
+.hm-row{display:flex;align-items:center;margin-bottom:3px;gap:3px}
+.hm-row-label{width:56px;flex-shrink:0;font-family:var(--font-mono);font-size:9px;color:var(--text3);text-align:right;padding-right:8px}
+.hm-cell{flex:1;min-width:32px;height:30px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-size:9px;color:rgba(255,255,255,.75);cursor:default;transition:opacity .15s}
+.hm-cell:hover{opacity:.75}
+
+/* DATA TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:4px}
+.data-table th{font-family:var(--font-mono);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text3);text-align:left;padding:6px 8px;border-bottom:1px solid var(--border)}
+.data-table td{padding:8px;border-bottom:1px solid var(--border);color:var(--text2)}
+.data-table td:first-child{color:var(--text);font-weight:500}
+.data-table tr:last-child td{border-bottom:none}
+.val-up{color:var(--green)}.val-down{color:var(--red)}
+
+.insight-text{color:var(--text2);font-size:13.5px;line-height:1.75;margin-bottom:16px}
+.insight-text strong{color:var(--text);font-weight:500}
+.actions-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px;margin-top:4px}
+.action-list{display:flex;flex-direction:column;gap:8px}
+.action-item{display:flex;gap:10px;align-items:flex-start;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px 12px}
+.action-num{width:20px;height:20px;border-radius:50%;background:rgba(255,107,53,.15);color:var(--accent);font-family:var(--font-mono);font-size:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.action-text{font-size:13px;color:var(--text2);line-height:1.6}
+.action-text strong{color:var(--text);font-weight:500}
+.impact{font-family:var(--font-mono);font-size:10px;padding:2px 8px;border-radius:20px;margin-left:8px;vertical-align:middle}
+.impact-high{background:rgba(45,204,122,.12);color:var(--green);border:1px solid rgba(45,204,122,.2)}
+.impact-med{background:rgba(255,173,53,.12);color:var(--accent2);border:1px solid rgba(255,173,53,.2)}
+.impact-low{background:rgba(79,157,255,.12);color:var(--blue);border:1px solid rgba(79,157,255,.2)}
+
+.unlock-nudge{margin-top:14px;padding:12px 14px;background:rgba(79,157,255,.05);border:1px solid rgba(79,157,255,.18);border-radius:var(--radius-sm)}
+.unlock-eyebrow{font-family:var(--font-mono);font-size:10px;color:var(--blue);letter-spacing:1px;text-transform:uppercase;margin-bottom:4px}
+.unlock-reason{font-size:12px;color:var(--text3);margin-bottom:8px}
+.unlock-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(79,157,255,.1);border:1px solid rgba(79,157,255,.28);color:var(--blue);padding:5px 12px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:11px;cursor:pointer}
+.unlock-pill:hover{background:rgba(79,157,255,.18)}
+
+/* CHARTS LOADING BANNER */
+.charts-loading-bar{display:flex;align-items:center;gap:8px;padding:10px 16px;background:rgba(79,157,255,.06);border:1px solid rgba(79,157,255,.15);border-radius:var(--radius-sm);margin-bottom:16px;font-family:var(--font-mono);font-size:11px;color:var(--blue)}
+.charts-loading-bar .mini-spin{width:12px;height:12px;border:1.5px solid rgba(79,157,255,.3);border-top-color:var(--blue);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+
+/* FOLLOW-UP */
+.followup-section{margin-top:36px;border-top:1px solid var(--border);padding-top:28px}
+.followup-title{font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:4px}
+.followup-sub{font-size:12px;color:var(--text3);font-family:var(--font-mono);margin-bottom:18px}
+.reports-shelf{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:16px}
+.shelf-label{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;flex-shrink:0;margin-right:4px}
+.r-tag{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;padding:3px 10px 3px 7px;font-family:var(--font-mono);font-size:11px;color:var(--text2)}
+.r-tag .r-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0}
+.r-tag.primary .r-dot{background:var(--accent)}.r-tag.secondary .r-dot{background:var(--blue)}
+.q-chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.q-chip{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:7px 12px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;transition:all .15s}
+.q-chip:hover{border-color:var(--accent);color:var(--accent);background:rgba(255,107,53,.06)}
+.fu-pill{display:none;align-items:center;gap:8px;background:rgba(45,204,122,.07);border:1px solid rgba(45,204,122,.22);border-radius:var(--radius-sm);padding:8px 12px;margin-bottom:10px;font-size:12px;color:var(--green);font-family:var(--font-mono)}
+.fu-pill.show{display:flex}
+.fu-pill-remove{background:none;border:none;color:var(--green);cursor:pointer;font-size:14px;margin-left:auto;opacity:.6}
+.fu-pill-remove:hover{opacity:1}
+.fu-bar{display:flex;gap:8px}
+.fu-input{flex:1;background:var(--surface);border:1px solid var(--border);color:var(--text);padding:11px 14px;border-radius:var(--radius-sm);font-family:var(--font-body);font-size:13px;outline:none}
+.fu-input:focus{border-color:var(--border2)}
+.fu-input::placeholder{color:var(--text3)}
+.fu-attach{background:var(--surface2);border:1px solid var(--border);color:var(--text2);padding:11px 14px;border-radius:var(--radius-sm);cursor:pointer;font-size:16px;transition:all .15s;position:relative;flex-shrink:0}
+.fu-attach:hover{border-color:var(--blue);color:var(--blue)}
+.fu-attach.loaded{border-color:var(--green);color:var(--green);background:rgba(45,204,122,.07)}
+.fu-attach .dot{position:absolute;top:-3px;right:-3px;width:8px;height:8px;border-radius:50%;background:var(--green);border:2px solid var(--bg);display:none}
+.fu-attach.loaded .dot{display:block}
+#fu-file-input{display:none}
+.fu-send{background:var(--accent);border:none;color:#fff;padding:11px 20px;border-radius:var(--radius-sm);cursor:pointer;font-size:16px;flex-shrink:0}
+.fu-send:hover:not(:disabled){background:#ff8255}
+.fu-send:disabled{opacity:.4;cursor:not-allowed}
+.fu-hint{font-size:11px;color:var(--text3);font-family:var(--font-mono);margin-top:7px}
+.fu-thread{display:flex;flex-direction:column;gap:16px;margin-top:20px}
+.fq-bub{background:rgba(255,107,53,.08);border:1px solid rgba(255,107,53,.18);border-radius:var(--radius-sm);padding:10px 14px;font-size:13px;color:var(--text);align-self:flex-end;max-width:86%}
+.fq-file-tag{display:inline-block;background:rgba(255,107,53,.15);border-radius:3px;padding:1px 6px;font-family:var(--font-mono);font-size:10px;margin-left:6px;vertical-align:middle}
+.fa-bub{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 18px;font-size:13px;color:var(--text2);line-height:1.78}
+.fa-bub strong{color:var(--text);font-weight:500}
+.fa-source{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+.cross-banner{font-family:var(--font-mono);font-size:10px;color:var(--purple);letter-spacing:1px;text-transform:uppercase;margin-bottom:12px}
+.cross-charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;margin-top:16px}
+.cross-chart-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px}
+.cross-chart-title{font-family:var(--font-mono);font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:10px}
+
+/* NR CARD */
+.nr-card{background:var(--surface);border:1px solid var(--border2);border-left:3px solid var(--blue);border-radius:var(--radius);padding:20px;animation:fadeUp .3s ease both}
+.nr-eyebrow{font-family:var(--font-mono);font-size:10px;color:var(--blue);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+.nr-body{font-size:13px;color:var(--text2);line-height:1.75;margin-bottom:14px}
+.nr-body strong{color:var(--text);font-weight:500}
+.nr-pill{display:inline-flex;align-items:center;gap:6px;background:rgba(79,157,255,.1);border:1px solid rgba(79,157,255,.28);color:var(--blue);padding:5px 12px;border-radius:var(--radius-sm);font-family:var(--font-mono);font-size:12px;margin-bottom:16px}
+.nr-dropzone{border:1px dashed rgba(79,157,255,.35);border-radius:var(--radius-sm);padding:22px;text-align:center;cursor:pointer;transition:all .2s;background:rgba(79,157,255,.03)}
+.nr-dropzone:hover,.nr-dropzone.drag-over{border-color:var(--blue);background:rgba(79,157,255,.07)}
+.nr-drop-text{font-size:13px;color:var(--text3);margin-bottom:10px}
+.nr-drop-btn{background:var(--blue);color:#fff;border:none;padding:8px 20px;border-radius:var(--radius-sm);font-family:var(--font-display);font-weight:600;font-size:12px;cursor:pointer}
+.nr-drop-btn:hover{background:#6faeff}
+.nr-loaded-row{display:none;align-items:center;gap:10px;background:rgba(45,204,122,.06);border:1px solid rgba(45,204,122,.22);border-radius:var(--radius-sm);padding:10px 14px;margin-top:12px}
+.nr-loaded-row.show{display:flex}
+.nr-loaded-name{font-family:var(--font-mono);font-size:12px;color:var(--green);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nr-go{background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;padding:8px 18px;border-radius:var(--radius-sm);font-family:var(--font-display);font-weight:600;font-size:12px;cursor:pointer;white-space:nowrap}
+.nr-go:hover:not(:disabled){opacity:.9}
+.nr-go:disabled{opacity:.5;cursor:not-allowed}
+.error-bar{background:rgba(255,71,87,.08);border:1px solid rgba(255,71,87,.25);border-radius:var(--radius-sm);padding:12px 16px;color:var(--red);font-size:13px;margin-top:12px;display:none}
+footer{padding:24px 0;border-top:1px solid var(--border);text-align:center;color:var(--text3);font-size:12px;font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<header>
+  <div class="header-inner">
+    <div><div class="logo">Rest<span>IQ</span></div><div class="logo-sub">AI Restaurant Intelligence</div></div>
+    <div class="badge">Powered by Claude</div>
+  </div>
+</header>
+
+<div class="upload-section" id="upload-section">
+  <div class="section-label">01 — Load your report</div>
+  <div class="upload-zone" id="upload-zone">
+    <div class="upload-icon">📊</div>
+    <div class="upload-title">Drop any Petpooja report here</div>
+    <div class="upload-sub">Sales · Item-wise · Hourly · Discount · Cancel · Category · Locality · Online · Any report</div>
+    <button class="upload-btn" onclick="document.getElementById('file-input').click()">Choose file</button>
+    <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.txt"/>
+    <div class="format-chips"><span class="chip">CSV</span><span class="chip">XLSX</span><span class="chip">XLS</span><span class="chip">TXT</span></div>
+  </div>
+  <div class="file-preview" id="file-preview">
+    <div class="file-icon">📄</div>
+    <div><div class="file-name" id="fname">—</div><div class="file-meta" id="fmeta">—</div></div>
+    <button class="file-remove" id="file-remove">✕</button>
+  </div>
+  <div style="margin-top:24px">
+    <div class="section-label">02 — Context (optional)</div>
+    <div class="report-type-row" id="rtype-row">
+      <div class="rtype active" data-type="auto">Auto-detect</div>
+      <div class="rtype" data-type="sales">Sales report</div>
+      <div class="rtype" data-type="item">Item-wise</div>
+      <div class="rtype" data-type="hourly">Hourly</div>
+      <div class="rtype" data-type="discount">Discount</div>
+      <div class="rtype" data-type="cancel">Cancellations</div>
+      <div class="rtype" data-type="category">Category-wise</div>
+      <div class="rtype" data-type="locality">Locality</div>
+      <div class="rtype" data-type="online">Online orders</div>
+    </div>
+    <div class="context-bar" style="margin-top:14px">
+      <div class="cfield"><label>Restaurant name</label><input type="text" id="rest-name" placeholder="e.g. Biryani Blues, Ahmedabad"/></div>
+      <div class="cfield"><label>Period covered</label><input type="text" id="period" placeholder="e.g. May 2025"/></div>
+      <div class="cfield"><label>Platform</label>
+        <select id="platform">
+          <option value="both">Zomato + Swiggy</option>
+          <option value="zomato">Zomato only</option>
+          <option value="swiggy">Swiggy only</option>
+          <option value="dine">Dine-in</option>
+          <option value="all">All channels</option>
+        </select>
+      </div>
+      <button class="analyse-btn" id="analyse-btn" disabled>Analyse →</button>
+    </div>
+    <div class="error-bar" id="error-bar"></div>
+  </div>
+</div>
+
+<div class="loading-section" id="loading-section">
+  <div class="spinner"></div>
+  <div class="loading-title" id="loading-title">Analysing your data...</div>
+  <div class="loading-steps">
+    <div class="loading-step" id="ls1">→ Reading report structure</div>
+    <div class="loading-step" id="ls2">→ Identifying patterns and anomalies</div>
+    <div class="loading-step" id="ls3">→ Benchmarking against restaurant norms</div>
+    <div class="loading-step" id="ls4">→ Generating actionable insights</div>
+    <div class="loading-step" id="ls5">→ Prioritising by revenue impact</div>
+  </div>
+</div>
+
+<div class="results-section" id="results-section">
+  <div class="results-header">
+    <div><div class="results-title" id="results-title">Analysis complete</div><div class="results-meta" id="results-meta">—</div></div>
+    <button class="reset-btn" id="reset-btn">← New report</button>
+  </div>
+  <div class="pulse-row" id="pulse-row"></div>
+  <div id="charts-loading-bar" style="display:none" class="charts-loading-bar"><div class="mini-spin"></div>Loading visualisations...</div>
+  <div class="insights-grid" id="insights-grid"></div>
+
+  <div class="followup-section">
+    <div class="followup-title">Deep dive</div>
+    <div class="followup-sub">Ask anything · 📎 attach another report for cross-analysis · AI will ask if it needs more data</div>
+    <div class="reports-shelf" id="reports-shelf">
+      <span class="shelf-label">Active:</span>
+      <div id="shelf-tags" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center"></div>
+    </div>
+    <div class="q-chips" id="q-chips"></div>
+    <div class="fu-pill" id="fu-pill"><span>📎</span><span id="fu-pill-name">—</span><button class="fu-pill-remove" id="fu-pill-remove">✕</button></div>
+    <div class="fu-bar">
+      <input class="fu-input" id="fu-input" placeholder="Ask anything — or attach a second report for combined insights"/>
+      <button class="fu-attach" id="fu-attach" title="Attach report">📎<span class="dot"></span></button>
+      <input type="file" id="fu-file-input" accept=".csv,.xlsx,.xls,.txt"/>
+      <button class="fu-send" id="fu-send" disabled>↑</button>
+    </div>
+    <div class="fu-hint">💡 AI will tell you if it needs another report — upload it right here</div>
+    <div class="fu-thread" id="fu-thread"></div>
+  </div>
+</div>
+
+</div>
+<footer><div class="shell">RestIQ — reads real data, reasons like a senior analyst</div></footer>
+
+<script>
+// ══════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════
+let primaryData = null, primaryName = '';
+let extraData = null,   extraName   = '';
+let reportType  = 'auto';
+let analysisCtx = '', analysisFull = '';
+let loadedReports = [];
+let chartInstances = {};
+let chartCounter   = 0;
+let lastInsights   = [];   // stored for chart call
+
+// ══════════════════════════════════════
+//  CHART COLORS
+// ══════════════════════════════════════
+const COLORS = {
+  accent: { bg:'rgba(255,107,53,.75)',  line:'#ff6b35' },
+  green:  { bg:'rgba(45,204,122,.75)',  line:'#2dcc7a' },
+  red:    { bg:'rgba(255,71,87,.75)',   line:'#ff4757' },
+  blue:   { bg:'rgba(79,157,255,.75)',  line:'#4f9dff' },
+  purple: { bg:'rgba(168,85,247,.75)',  line:'#a855f7' },
+  amber:  { bg:'rgba(255,173,53,.75)',  line:'#ffad35' },
+};
+const PALETTE = ['accent','green','blue','purple','amber','red'];
+
+function col(key, i) { return COLORS[key] || COLORS[PALETTE[i % PALETTE.length]]; }
+
+// ══════════════════════════════════════
+//  RENDER CHART — Chart.js
+// ══════════════════════════════════════
+function renderChart(canvasId, def) {
+  if (!def || !window.Chart) return;
+
+  if (chartInstances[canvasId]) { chartInstances[canvasId].destroy(); delete chartInstances[canvasId]; }
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+
+  if (!Chart._defaultsApplied) {
+    Chart.defaults.color          = '#9896a8';
+    Chart.defaults.borderColor    = '#2a2a3a';
+    Chart.defaults.font.family    = "'DM Mono', monospace";
+    Chart.defaults.font.size      = 11;
+    Chart._defaultsApplied = true;
+  }
+
+  const type      = (def.type || 'bar').toLowerCase();
+  const isHoriz   = type === 'horizontalbar';
+  const isPie     = type === 'pie' || type === 'doughnut';
+  const chartType = isPie ? type : isHoriz ? 'bar' : type === 'line' ? 'line' : 'bar';
+
+  const datasets = (def.datasets || []).map((ds, i) => {
+    const c = col(ds.colorKey, i);
+    const base = {
+      label:           ds.label || '',
+      data:            (ds.data || []).map(Number),
+      backgroundColor: chartType === 'line' ? c.bg.replace('.75', '.15') : c.bg,
+      borderColor:     c.line,
+      borderWidth:     chartType === 'line' ? 2 : 1,
+    };
+    if (chartType === 'line') { base.tension=.4; base.fill=true; base.pointBackgroundColor=c.line; base.pointRadius=4; }
+    if (chartType === 'bar')  { base.borderRadius = 4; }
+    if (isPie) {
+      base.backgroundColor = PALETTE.map(k => COLORS[k].bg);
+      base.borderColor     = PALETTE.map(k => COLORS[k].line);
+      base.borderWidth     = 1;
+    }
+    return base;
+  });
+
+  const pref = def.prefix || '';
+  const suff = def.suffix || '';
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    indexAxis: isHoriz ? 'y' : 'x',
+    plugins: {
+      legend: { display: datasets.length > 1 || isPie, position:'top' },
+      tooltip: {
+        backgroundColor:'#1a1a24', borderColor:'#3a3a50', borderWidth:1,
+        titleColor:'#f0eee8', bodyColor:'#9896a8', padding:10,
+        callbacks: {
+          label: ctx => {
+            const v = isPie ? ctx.parsed : ctx.parsed[isHoriz ? 'x' : 'y'];
+            return ' ' + pref + (typeof v==='number' ? v.toLocaleString('en-IN') : v) + suff;
+          }
+        }
+      }
+    },
+    scales: isPie ? {} : {
+      x: { grid:{ color:'#1e1e2a' }, ticks:{ maxRotation:45 } },
+      y: {
+        grid:{ color:'#1e1e2a' }, beginAtZero:true,
+        ticks:{ callback: v => pref + (typeof v==='number' ? v.toLocaleString('en-IN') : v) + suff }
+      }
+    }
+  };
+
+  try {
+    chartInstances[canvasId] = new Chart(canvas, { type:chartType, data:{ labels:def.labels||[], datasets }, options });
+  } catch(e) { console.warn('Chart error', canvasId, e); }
+}
+
+// ══════════════════════════════════════
+//  HEATMAP
+// ══════════════════════════════════════
+function renderHeatmap(container, def) {
+  const rows = def.rows || [], cols = def.cols || [], vals = def.values || [];
+  let mn = Infinity, mx = -Infinity;
+  vals.forEach(r => r.forEach(v => { if(v<mn) mn=v; if(v>mx) mx=v; }));
+  if (mx===mn) mx=mn+1;
+
+  let html = '<div class="heatmap-wrap"><div class="hm-label-row">';
+  cols.forEach(c => { html += `<div class="hm-col-label">${x(String(c))}</div>`; });
+  html += '</div>';
+  rows.forEach((rl, ri) => {
+    html += `<div class="hm-row"><div class="hm-row-label">${x(String(rl))}</div>`;
+    (vals[ri]||[]).forEach(v => {
+      const t = (v-mn)/(mx-mn);
+      const r = Math.round(10+t*245), g = Math.round(20+t*87), b = Math.round(60-t*7);
+      const disp = v>=1000 ? (v/1000).toFixed(1)+'k' : String(v);
+      html += `<div class="hm-cell" style="background:rgb(${r},${g},${b})" title="${v}">${disp}</div>`;
+    });
+    html += '</div>';
+  });
+  html += '</div>';
+  container.innerHTML = html;
+}
+
+// ══════════════════════════════════════
+//  FILE READING
+// ══════════════════════════════════════
+function readFile(f) {
+  return new Promise(resolve => {
+    const ext = f.name.split('.').pop().toLowerCase();
+    const reader = new FileReader();
+    if (ext==='xlsx'||ext==='xls') {
+      reader.readAsBinaryString(f);
+      reader.onload = ev => {
+        try { if(window.XLSX){ const wb=XLSX.read(ev.target.result,{type:'binary'}); resolve(XLSX.utils.sheet_to_csv(wb.Sheets[wb.SheetNames[0]])); } else resolve(ev.target.result); }
+        catch(e){ resolve(ev.target.result); }
+      };
+    } else { reader.readAsText(f); reader.onload = ev => resolve(ev.target.result); }
+    reader.onerror = () => resolve('');
+  });
+}
+
+// ══════════════════════════════════════
+//  PRIMARY UPLOAD
+// ══════════════════════════════════════
+const uploadZone = document.getElementById('upload-zone');
+const fileInput  = document.getElementById('file-input');
+uploadZone.addEventListener('click', e => { if(e.target.tagName!=='BUTTON') fileInput.click(); });
+uploadZone.addEventListener('dragover',  e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classList.remove('drag-over'); if(e.dataTransfer.files[0]) setPrimary(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', e => { if(e.target.files[0]) setPrimary(e.target.files[0]); });
+document.getElementById('file-remove').addEventListener('click', clearPrimary);
+
+function setPrimary(f) {
+  primaryName = f.name;
+  document.getElementById('fname').textContent = f.name;
+  document.getElementById('fmeta').textContent = `${(f.size/1024).toFixed(1)} KB · ${f.name.split('.').pop().toUpperCase()}`;
+  document.getElementById('file-preview').classList.add('show');
+  document.getElementById('analyse-btn').disabled = false;
+  hideErr();
+  readFile(f).then(t => { primaryData = t; });
+}
+function clearPrimary() {
+  primaryData=null; primaryName='';
+  document.getElementById('file-preview').classList.remove('show');
+  document.getElementById('analyse-btn').disabled = true;
+  fileInput.value=''; hideErr();
+}
+
+document.getElementById('rtype-row').addEventListener('click', e => {
+  const t = e.target.closest('.rtype'); if(!t) return;
+  document.querySelectorAll('.rtype').forEach(r=>r.classList.remove('active'));
+  t.classList.add('active'); reportType = t.dataset.type;
+});
+
+// ══════════════════════════════════════
+//  STEP 1 — ANALYSE (insights only, no charts in this call)
+// ══════════════════════════════════════
+document.getElementById('analyse-btn').addEventListener('click', runAnalysis);
+
+async function runAnalysis() {
+  if (!primaryData) return;
+  hideErr(); show('loading'); animateSteps('Analysing your data...');
+
+  const restName = document.getElementById('rest-name').value.trim();
+  const period   = document.getElementById('period').value.trim();
+  const platform = document.getElementById('platform').value;
+
+  analysisCtx = [
+    restName ? `Restaurant: ${restName}` : '',
+    period   ? `Period: ${period}` : '',
+    `Platform: ${platform}`,
+    reportType!=='auto' ? `Report type: ${reportType}` : ''
+  ].filter(Boolean).join(' | ');
+
+  loadedReports = [{ name:primaryName, label:'primary' }];
+
+  // ── INSIGHTS PROMPT (no chart data — keeps JSON small and reliable) ──
+  const INSIGHTS_SYSTEM = `You are RestIQ, a world-class restaurant business analyst for Indian restaurants on Zomato/Swiggy. Analyse raw Petpooja POS data and produce sharp, specific, revenue-focused insights.
+
+RULES:
+- Every insight must reference actual numbers from the data. No generic advice.
+- Prioritise by rupee impact. Biggest money issues first.
+- Spot patterns: time anomalies, item combinations, discount leakage, cancellation spikes, dead menu items.
+- Quantify opportunities: "If you fix X you could gain approx Rs.Y/month."
+- For each insight note which other Petpooja report would deepen the finding.
+
+CRITICAL JSON RULES:
+- Respond ONLY with raw JSON. Zero text before or after. No markdown fences.
+- No rupee symbol anywhere — write Rs. instead.
+- No raw newlines inside string values — use the two characters backslash-n if needed.
+- No trailing commas. All arrays and objects must be properly closed.
+- Keep all string values short and clean.
+
+OUTPUT this exact JSON:
+{
+  "report_name": "string",
+  "period": "string",
+  "summary": "2-3 sentence executive summary with the top finding and numbers.",
+  "pulse": [
+    {"label":"string","value":"string","sub":"string","signal":"up|down|warn|info"}
+  ],
+  "insights": [
+    {
+      "tag": "critical|opportunity|warning|insight|action",
+      "title": "headline with a specific number",
+      "body": "3-5 sentences with real numbers. Single line, no newlines.",
+      "data_headers": ["col1","col2","col3"],
+      "data_rows": [{"col1":"v","col2":"v","col3":"v"}],
+      "needs_report": "exact Petpooja report name or null",
+      "needs_reason": "one sentence or null",
+      "actions": [{"text":"specific action","impact":"high|med|low"}]
+    }
+  ],
+  "followup_questions": ["q1","q2","q3","q4","q5"]
+}`;
+
+  try {
+    const raw = await callClaude(INSIGHTS_SYSTEM, `REPORT DATA:\n${primaryData}\n\n${analysisCtx ? 'CONTEXT: '+analysisCtx : ''}`, 5000);
+    analysisFull  = raw;
+    const parsed  = parseJSON(raw);
+    lastInsights  = parsed.insights || [];
+
+    renderResults(parsed);
+    show('results');
+
+    // ── STEP 2 — load charts asynchronously after insights are shown ──
+    loadCharts(primaryData, lastInsights);
+
+  } catch(e) { show('upload'); showErr(e.message); }
+}
+
+// ══════════════════════════════════════
+//  STEP 2 — LOAD CHARTS (separate call, won't break insights)
+// ══════════════════════════════════════
+async function loadCharts(reportData, insights) {
+  if (!insights.length) return;
+
+  document.getElementById('charts-loading-bar').style.display = 'flex';
+
+  // Build a compact summary of each insight for the chart prompt
+  const insightSummary = insights.map((ins, i) =>
+    `${i}: [${ins.tag}] ${ins.title} | Data headers: ${(ins.data_headers||[]).join(', ')} | Rows: ${(ins.data_rows||[]).length}`
+  ).join('\n');
+
+  const CHART_SYSTEM = `You are a data visualisation expert for restaurant analytics. Given insight summaries and raw report data, generate ONE chart specification per insight.
+
+RULES:
+- Use real numbers extracted from the report data.
+- Pick the best chart type: bar, line, doughnut, pie, horizontalBar, heatmap.
+- Use heatmap ONLY for hour-by-day or similar matrix data.
+- colorKey options: accent, green, red, blue, purple, amber.
+- prefix: use "Rs." for currency, "" otherwise. suffix: use "%" for percentages, "" otherwise.
+- Max 12 data points per dataset. Labels max 15 chars. Numbers only in data arrays.
+- Do NOT use rupee symbol. Do NOT use trailing commas.
+- Respond ONLY with a raw JSON array — no markdown, no text before or after.
+
+OUTPUT:
+[
+  {
+    "insight_index": 0,
+    "type": "bar|line|doughnut|pie|horizontalBar|heatmap",
+    "title": "string",
+    "labels": ["string"],
+    "datasets": [{"label":"string","data":[0],"colorKey":"accent"}],
+    "prefix": "",
+    "suffix": "",
+    "rows": [],
+    "cols": [],
+    "values": []
+  }
+]`;
+
+  const userMsg = `REPORT DATA (extract numbers from this):\n${reportData.slice(0, 14000)}\n\nINSIGHTS TO CHART:\n${insightSummary}\n\nGenerate one chart per insight index (0 to ${insights.length-1}).`;
+
+  try {
+    const raw    = await callClaude(CHART_SYSTEM, userMsg, 3000);
+    const charts = parseChartArray(raw);
+    injectCharts(charts);
+  } catch(e) {
+    console.warn('Chart load failed (insights still visible):', e.message);
+    // Show "no charts" state gracefully
+    document.querySelectorAll('.chart-loading').forEach(el => {
+      el.innerHTML = '<span style="color:var(--text3);font-size:11px">Chart unavailable for this data format</span>';
+    });
+  } finally {
+    document.getElementById('charts-loading-bar').style.display = 'none';
+  }
+}
+
+function parseChartArray(raw) {
+  let s = raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  const start = s.indexOf('['), end = s.lastIndexOf(']');
+  if (start===-1||end===-1) return [];
+  s = s.slice(start, end+1);
+  try { return JSON.parse(s); } catch(_) {}
+  try { return JSON.parse(repairJSON(s)); } catch(e) { console.warn('Chart array parse fail:', e); return []; }
+}
+
+function injectCharts(charts) {
+  charts.forEach(cd => {
+    const idx = cd.insight_index;
+    if (typeof idx !== 'number') return;
+    const wrap = document.getElementById(`chart_wrap_${idx}`);
+    if (!wrap) return;
+
+    wrap.innerHTML = ''; // clear loading spinner
+
+    const isHeatmap = (cd.type||'').toLowerCase() === 'heatmap';
+    const isTall    = (cd.labels||[]).length > 8 || (cd.type||'').toLowerCase() === 'horizontalbar';
+    const cid       = 'c_' + (++chartCounter);
+
+    const inner = document.createElement('div');
+    inner.className = `chart-canvas-wrap ${isTall?'tall':''}`;
+    if (isHeatmap) {
+      inner.style.height = 'auto';
+      renderHeatmap(inner, cd);
+    } else {
+      const canvas = document.createElement('canvas');
+      canvas.id = cid;
+      inner.appendChild(canvas);
+      // Only render if the tab panel is visible
+      setTimeout(() => renderChart(cid, cd), 80);
+    }
+    wrap.appendChild(inner);
+
+    // Store def for re-render on tab switch
+    wrap.dataset.chartDef  = JSON.stringify(cd);
+    wrap.dataset.chartId   = cid;
+    wrap.dataset.heatmap   = isHeatmap ? '1' : '0';
+    wrap.dataset.rendered  = '0';
+  });
+}
+
+// Re-render chart when viz tab is activated (canvas may have been hidden)
+function activateVizTab(tabEl, panelId, idx) {
+  const body = tabEl.closest('.insight-body');
+  body.querySelectorAll('.itab').forEach(t=>t.classList.remove('active'));
+  body.querySelectorAll('.itab-panel').forEach(p=>p.classList.remove('active'));
+  tabEl.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+
+  // Re-render chart
+  const wrap = document.getElementById(`chart_wrap_${idx}`);
+  if (!wrap || !wrap.dataset.chartDef) return;
+  if (wrap.dataset.heatmap === '1') return; // heatmap already rendered in DOM
+  const cid = wrap.dataset.chartId;
+  if (!cid) return;
+  try { renderChart(cid, JSON.parse(wrap.dataset.chartDef)); } catch(_) {}
+}
+
+function activateTxtTab(tabEl, panelId) {
+  const body = tabEl.closest('.insight-body');
+  body.querySelectorAll('.itab').forEach(t=>t.classList.remove('active'));
+  body.querySelectorAll('.itab-panel').forEach(p=>p.classList.remove('active'));
+  tabEl.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+// ══════════════════════════════════════
+//  RENDER RESULTS
+// ══════════════════════════════════════
+function renderResults(d) {
+  document.getElementById('results-title').textContent = d.report_name || 'Analysis complete';
+  document.getElementById('results-meta').textContent  = [d.period, analysisCtx].filter(Boolean).join('  ·  ');
+
+  // Pulse
+  const pr = document.getElementById('pulse-row'); pr.innerHTML = '';
+  (d.pulse||[]).forEach(p => {
+    const c = document.createElement('div');
+    c.className = `pulse-card ${p.signal||'info'}`;
+    c.innerHTML = `<div class="pulse-label">${x(p.label)}</div><div class="pulse-value">${fmt(p.value)}</div><div class="pulse-sub">${x(p.sub||'')}</div>`;
+    pr.appendChild(c);
+  });
+
+  // Insights
+  const grid = document.getElementById('insights-grid'); grid.innerHTML = '';
+  (d.insights||[]).forEach((ins, i) => {
+    const block = document.createElement('div');
+    block.className = 'insight-block';
+    block.style.animationDelay = (i*.07)+'s';
+
+    // Unlock nudge
+    let unlock = '';
+    if (ins.needs_report) {
+      unlock = `<div class="unlock-nudge"><div class="unlock-eyebrow">🔍 Unlock deeper insight</div>
+        <div class="unlock-reason">${x(ins.needs_reason||'')}</div>
+        <div class="unlock-pill" onclick="openNRCard('${x(ins.needs_report)}','${x(ins.needs_reason||'')}')">📎 Upload ${x(ins.needs_report)} →</div>
+      </div>`;
+    }
+
+    // Actions
+    let acts = '';
+    if (ins.actions?.length) {
+      acts = `<div class="actions-label">Recommended actions</div><div class="action-list">
+        ${ins.actions.map((a,n)=>`<div class="action-item"><div class="action-num">${n+1}</div>
+          <div class="action-text">${x(a.text)}<span class="impact impact-${a.impact||'med'}">${a.impact||'med'} impact</span></div>
+        </div>`).join('')}
+      </div>`;
+    }
+
+    // Table
+    let tbl = '';
+    if (ins.data_rows?.length && ins.data_headers?.length) {
+      tbl = `<table class="data-table" style="margin-bottom:4px"><thead><tr>${ins.data_headers.map(h=>`<th>${x(h)}</th>`).join('')}</tr></thead><tbody>
+        ${ins.data_rows.map(row=>`<tr>${ins.data_headers.map((_,j)=>{
+          const v=String(Object.values(row)[j]||'');
+          const cls=v.startsWith('+')?'val-up':v.startsWith('-')?'val-down':'';
+          return `<td class="${cls}">${x(v)}</td>`;
+        }).join('')}</tr>`).join('')}</tbody></table>`;
+    }
+
+    block.innerHTML = `
+      <div class="insight-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="insight-tag tag-${ins.tag||'insight'}">${ins.tag||'insight'}</span>
+        <span class="insight-title">${x(ins.title)}</span>
+        <span class="insight-chevron">⌄</span>
+      </div>
+      <div class="insight-body">
+        <div class="insight-tabs">
+          <div class="itab active" onclick="activateVizTab(this,'viz_${i}',${i})">📊 Visualise</div>
+          <div class="itab" onclick="activateTxtTab(this,'txt_${i}')">📝 Analysis</div>
+        </div>
+        <div class="itab-panel active" id="viz_${i}">
+          <div class="chart-wrap">
+            <div class="chart-title">Loading chart...</div>
+            <div id="chart_wrap_${i}">
+              <div class="chart-loading"><div class="mini-spin"></div>Extracting chart data...</div>
+            </div>
+          </div>
+          ${tbl}
+        </div>
+        <div class="itab-panel" id="txt_${i}">
+          <div class="insight-text">${fmt(ins.body||'')}</div>
+          ${unlock}${acts}
+        </div>
+      </div>`;
+    grid.appendChild(block);
+    if (i < 2) block.classList.add('open');
+  });
+
+  refreshShelf();
+
+  const chips = document.getElementById('q-chips'); chips.innerHTML='';
+  (d.followup_questions||[]).forEach(q => {
+    const c = document.createElement('div'); c.className='q-chip'; c.textContent=q;
+    c.addEventListener('click', () => { document.getElementById('fu-input').value=q; sendFU(); });
+    chips.appendChild(c);
+  });
+  document.getElementById('fu-send').disabled = false;
+}
+
+function refreshShelf() {
+  const tags = document.getElementById('shelf-tags'); tags.innerHTML='';
+  loadedReports.forEach(r => {
+    const t = document.createElement('div');
+    t.className=`r-tag ${r.label}`;
+    t.innerHTML=`<span class="r-dot"></span>${x(r.name)}`;
+    tags.appendChild(t);
+  });
+}
+
+// ══════════════════════════════════════
+//  NR CARD
+// ══════════════════════════════════════
+function openNRCard(rn, reason) {
+  document.getElementById('fu-thread').scrollIntoView({behavior:'smooth',block:'start'});
+  setTimeout(() => injectNRCard(rn, reason), 350);
+}
+function injectNRCard(reportName, reason) {
+  const thread = document.getElementById('fu-thread');
+  if (thread.querySelector(`[data-nr="${CSS.escape(reportName)}"]`)) {
+    thread.querySelector(`[data-nr="${CSS.escape(reportName)}"]`).scrollIntoView({behavior:'smooth',block:'nearest'});
+    return;
+  }
+  const uid = 'nr'+Date.now();
+  const card = document.createElement('div');
+  card.className='nr-card'; card.dataset.nr=reportName;
+  card.innerHTML=`
+    <div class="nr-eyebrow">📂 Additional report needed</div>
+    <div class="nr-body">${fmt(reason||'Uploading this report enables cross-report insights.')}</div>
+    <div class="nr-pill">📊 ${x(reportName)}</div>
+    <div class="nr-dropzone" id="dz_${uid}">
+      <div class="nr-drop-text">Drop <strong>${x(reportName)}</strong> here, or</div>
+      <button class="nr-drop-btn" onclick="document.getElementById('fi_${uid}').click()">Choose file</button>
+      <input type="file" class="nr-file-input" id="fi_${uid}" accept=".csv,.xlsx,.xls,.txt"/>
+    </div>
+    <div class="nr-loaded-row" id="rl_${uid}">
+      <span>✓</span><span class="nr-loaded-name" id="rln_${uid}">—</span>
+      <button class="nr-go" id="go_${uid}">Analyse both →</button>
+    </div>`;
+  thread.appendChild(card);
+  card.scrollIntoView({behavior:'smooth',block:'nearest'});
+  const dz=document.getElementById(`dz_${uid}`),fi=document.getElementById(`fi_${uid}`);
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+  dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag-over');if(e.dataTransfer.files[0])loadNRFile(e.dataTransfer.files[0],uid,reportName);});
+  fi.addEventListener('change',e=>{if(e.target.files[0])loadNRFile(e.target.files[0],uid,reportName);});
+}
+function loadNRFile(f,uid,reportName){
+  readFile(f).then(text=>{
+    extraData=text; extraName=f.name;
+    document.getElementById(`rln_${uid}`).textContent=f.name;
+    document.getElementById(`rl_${uid}`).classList.add('show');
+    document.getElementById(`dz_${uid}`).style.display='none';
+    document.getElementById(`go_${uid}`).onclick=()=>runCross(uid,reportName,text,f.name);
+  });
+}
+
+// ══════════════════════════════════════
+//  CROSS-REPORT ANALYSIS
+// ══════════════════════════════════════
+async function runCross(uid, reportName, secondText, secondName) {
+  const goBtn = document.getElementById(`go_${uid}`);
+  goBtn.textContent='Analysing…'; goBtn.disabled=true;
+  if (!loadedReports.find(r=>r.name===secondName)) { loadedReports.push({name:secondName,label:'secondary'}); refreshShelf(); }
+
+  const thread = document.getElementById('fu-thread');
+  const aBub   = document.createElement('div');
+  aBub.className='fa-bub';
+  aBub.innerHTML='<div class="fa-source">Building cross-report analysis...</div>';
+  thread.appendChild(aBub);
+  aBub.scrollIntoView({behavior:'smooth',block:'nearest'});
+
+  // ── Call 1: cross-report text insights ──
+  const TEXT_SYS = `You are RestIQ. You have TWO Petpooja reports. Produce 3-4 combined insights ONLY possible by reading BOTH together. Be brutally specific with real numbers from both datasets. Use **bold** for key figures. Use ## for section headings. Do not use rupee symbol — write Rs. instead.`;
+
+  // ── Call 2: charts for cross-report ──
+  const CHART_SYS = `You are a data visualisation expert. Given two restaurant reports, produce 2-3 chart specs that show combined cross-report patterns. Respond ONLY with a raw JSON array. No markdown. No rupee symbol — use prefix Rs. No trailing commas.
+[{"title":"string","type":"bar|line|doughnut|horizontalBar","labels":["string"],"datasets":[{"label":"string","data":[0],"colorKey":"accent|green|blue|purple|amber|red"}],"prefix":"","suffix":""}]`;
+
+  try {
+    const userMsg = `REPORT 1 — ${primaryName}:\n${primaryData.slice(0,9000)}\n\nREPORT 2 — ${secondName} (${reportName}):\n${secondText.slice(0,9000)}\n\nInsights that emerge ONLY from combining both:`;
+
+    // Fire both calls in parallel
+    const [textRes, chartRaw] = await Promise.all([
+      callClaude(TEXT_SYS, userMsg, 1500),
+      callClaude(CHART_SYS, userMsg, 1500)
+    ]);
+
+    aBub.innerHTML = `<div class="cross-banner">Cross-report · ${x(primaryName)} + ${x(secondName)}</div>${fmt(textRes)}`;
+
+    // Parse and render cross charts
+    const charts = parseChartArray(chartRaw);
+    if (charts.length) {
+      const cWrap = document.createElement('div');
+      cWrap.className='cross-charts';
+      charts.forEach(cd => {
+        const cid = 'xc_'+(++chartCounter);
+        const card = document.createElement('div');
+        card.className='cross-chart-card';
+        const tall = (cd.labels||[]).length>7 || (cd.type||'').toLowerCase()==='horizontalbar';
+        card.innerHTML=`<div class="cross-chart-title">${x(cd.title||'')}</div><div class="chart-canvas-wrap ${tall?'tall':''}"><canvas id="${cid}"></canvas></div>`;
+        cWrap.appendChild(card);
+        setTimeout(()=>renderChart(cid,cd),120);
+      });
+      aBub.appendChild(cWrap);
+    }
+  } catch(e) { aBub.textContent='Error: '+e.message; }
+  goBtn.textContent='Done ✓'; goBtn.disabled=true;
+}
+
+// ══════════════════════════════════════
+//  QUICK ATTACH
+// ══════════════════════════════════════
+document.getElementById('fu-attach').addEventListener('click',()=>document.getElementById('fu-file-input').click());
+document.getElementById('fu-file-input').addEventListener('change',e=>{if(e.target.files[0])setExtra(e.target.files[0]);});
+document.getElementById('fu-pill-remove').addEventListener('click',clearExtra);
+function setExtra(f){
+  readFile(f).then(text=>{
+    extraData=text; extraName=f.name;
+    document.getElementById('fu-pill-name').textContent=f.name;
+    document.getElementById('fu-pill').classList.add('show');
+    document.getElementById('fu-attach').classList.add('loaded');
+    if(!loadedReports.find(r=>r.name===f.name)){loadedReports.push({name:f.name,label:'secondary'});refreshShelf();}
+  });
+}
+function clearExtra(){
+  extraData=null; extraName='';
+  document.getElementById('fu-pill').classList.remove('show');
+  document.getElementById('fu-attach').classList.remove('loaded');
+  document.getElementById('fu-file-input').value='';
+}
+
+// ══════════════════════════════════════
+//  FOLLOW-UP
+// ══════════════════════════════════════
+document.getElementById('fu-send').addEventListener('click',sendFU);
+document.getElementById('fu-input').addEventListener('keydown',e=>{if(e.key==='Enter')sendFU();});
+
+async function sendFU(){
+  const inp=document.getElementById('fu-input');
+  const q=inp.value.trim(); if(!q) return;
+  inp.value='';
+  const thread=document.getElementById('fu-thread');
+  const hasExtra=!!extraData;
+  const qBub=document.createElement('div');
+  qBub.className='fq-bub';
+  qBub.innerHTML=x(q)+(hasExtra?`<span class="fq-file-tag">📎 ${x(extraName)}</span>`:'');
+  thread.appendChild(qBub);
+  const aBub=document.createElement('div');
+  aBub.className='fa-bub';
+  aBub.innerHTML='<div class="fa-source">Thinking…</div>';
+  thread.appendChild(aBub);
+  aBub.scrollIntoView({behavior:'smooth',block:'nearest'});
+  document.getElementById('fu-send').disabled=true;
+
+  const SYS=`You are RestIQ. Answer using loaded Petpooja data. Specific numbers, **bold** key figures, ## headings. Under 220 words. Do not use rupee symbol, write Rs. If you need another report end with: NEEDS_REPORT: [report name] | [why]`;
+  let userMsg=`PRIMARY (${primaryName}):\n${primaryData}\n\n`;
+  if(hasExtra) userMsg+=`EXTRA (${extraName}):\n${extraData}\n\n`;
+  userMsg+=`PREV ANALYSIS:\n${analysisFull.slice(0,2000)}\n\nQUESTION: ${q}`;
+
+  try{
+    const res=await callClaude(SYS,userMsg,1200);
+    const nrMatch=res.match(/NEEDS_REPORT:\s*(.+?)\s*\|\s*(.+)$/m);
+    if(nrMatch){
+      aBub.innerHTML=(hasExtra?`<div class="cross-banner">Cross-report · ${x(primaryName)} + ${x(extraName)}</div>`:'')+fmt(res.replace(/NEEDS_REPORT:.+$/m,'').trim());
+      setTimeout(()=>injectNRCard(nrMatch[1].trim(),nrMatch[2].trim()),300);
+    } else {
+      aBub.innerHTML=(hasExtra?`<div class="cross-banner">Cross-report · ${x(primaryName)} + ${x(extraName)}</div>`:'')+fmt(res);
+    }
+  } catch(e){aBub.textContent='Error: '+e.message;}
+  document.getElementById('fu-send').disabled=false;
+  if(hasExtra)clearExtra();
+}
+async function callClaude(system,userContent,maxTokens){
+
+  const res = await fetch('http://127.0.0.1:8000/analyze', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      system: system,
+      userContent: userContent,
+      maxTokens: maxTokens
+    })
+  });
+
+  if(!res.ok){
+    throw new Error(`API error ${res.status}`);
+  }
+
+  const data = await res.json();
+
+  return data.text;
+}
+
+// ══════════════════════════════════════
+//  JSON PARSE + REPAIR
+// ══════════════════════════════════════
+function parseJSON(raw){
+  let s=raw.replace(/```json\s*/g,'').replace(/```\s*/g,'').trim();
+  const start=s.indexOf('{'),end=s.lastIndexOf('}');
+  if(start===-1||end===-1) throw new Error('AI returned unexpected format. Please try again.');
+  s=s.slice(start,end+1);
+  try{return JSON.parse(s);}catch(_){}
+  s=repairJSON(s);
+  try{return JSON.parse(s);}catch(e){ throw new Error('Could not parse AI response ('+e.message+'). Try again — this is rare.'); }
+}
+
+function repairJSON(s){
+  let out='',inStr=false,esc=false;
+  for(let i=0;i<s.length;i++){
+    const ch=s[i];
+    if(esc){out+=ch;esc=false;continue;}
+    if(ch==='\\'){esc=true;out+=ch;continue;}
+    if(ch==='"'){inStr=!inStr;out+=ch;continue;}
+    if(inStr){
+      if(ch==='\n'){out+='\\n';continue;}
+      if(ch==='\r'){out+='\\r';continue;}
+      if(ch==='\t'){out+='\\t';continue;}
+    }
+    out+=ch;
+  }
+  s=out;
+  s=s.replace(/,\s*([}\]])/g,'$1');
+  s=s.replace(/}\s*{/g,'},{');
+  s=s.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g,'');
+  return s;
+}
+
+// ══════════════════════════════════════
+//  UTILITIES
+// ══════════════════════════════════════
+function show(name){
+  document.getElementById('upload-section').style.display=name==='upload'?'block':'none';
+  document.getElementById('loading-section').className='loading-section'+(name==='loading'?' show':'');
+  document.getElementById('results-section').className='results-section'+(name==='results'?' show':'');
+}
+function animateSteps(title){
+  document.getElementById('loading-title').textContent=title||'Analysing...';
+  const ids=['ls1','ls2','ls3','ls4','ls5'];
+  ids.forEach(id=>document.getElementById(id).className='loading-step');
+  let i=0;
+  const iv=setInterval(()=>{
+    if(i>0)document.getElementById(ids[i-1]).className='loading-step done';
+    if(i<ids.length){document.getElementById(ids[i]).className='loading-step active';i++;}
+    else clearInterval(iv);
+  },700);
+}
+document.getElementById('reset-btn').addEventListener('click',()=>{
+  clearPrimary(); clearExtra();
+  primaryData=null; extraData=null; loadedReports=[]; analysisFull=''; analysisCtx=''; lastInsights=[];
+  Object.values(chartInstances).forEach(c=>c.destroy()); chartInstances={};
+  ['insights-grid','pulse-row','fu-thread','q-chips','shelf-tags'].forEach(id=>document.getElementById(id).innerHTML='');
+  document.getElementById('fu-send').disabled=true;
+  document.getElementById('charts-loading-bar').style.display='none';
+  show('upload');
+});
+function showErr(msg){const b=document.getElementById('error-bar');b.textContent='⚠ '+msg;b.style.display='block';}
+function hideErr(){document.getElementById('error-bar').style.display='none';}
+function x(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function fmt(text){
+  return x(text)
+    .replace(/Rs\./g,'₹')
+    .replace(/##\s*(.+)/g,'<div style="font-family:var(--font-display);font-size:14px;font-weight:600;color:var(--text);margin:12px 0 5px">$1</div>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/₹[\d,]+(\.\d+)?/g,v=>`<strong>${v}</strong>`)
+    .replace(/\b\d+(\.\d+)?%/g,v=>`<strong>${v}</strong>`)
+    .replace(/\\n/g,'<br>').replace(/\n/g,'<br>');
+}
+
+const _s=document.createElement('script');
+_s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+document.head.appendChild(_s);
+</script>
+</body>
+</html>
