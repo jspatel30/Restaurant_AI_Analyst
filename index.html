@@ -983,7 +983,7 @@ async function sendFU(){
 }
 async function callClaude(system,userContent,maxTokens){
 
-  const res = await fetch('http://127.0.0.1:8000/analyze', {
+  const res = await fetch('https://restaurant-ai-analyst-1.onrender.com', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
