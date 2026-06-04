@@ -533,36 +533,70 @@ async function runAnalysis() {
 
   loadedReports = [{ name:primaryName, label:'primary' }];
 
-  // ── INSIGHTS PROMPT (no chart data — keeps JSON small and reliable) ──
-  const INSIGHTS_SYSTEM = `You are RestIQ, a world-class restaurant business analyst for Indian restaurants on Zomato/Swiggy. Analyse raw Petpooja POS data and produce sharp, specific, revenue-focused insights.
+  // ── INSIGHTS PROMPT ──
+  const INSIGHTS_SYSTEM = `You are RestIQ, a specialist restaurant data analyst for Indian restaurants using Petpooja POS. You produce REPORT-SPECIFIC insights using the actual data values in the uploaded file.
 
-RULES:
-- Every insight must reference actual numbers from the data. No generic advice.
-- Prioritise by rupee impact. Biggest money issues first.
-- Spot patterns: time anomalies, item combinations, discount leakage, cancellation spikes, dead menu items.
-- Quantify opportunities: "If you fix X you could gain approx Rs.Y/month."
-- For each insight note which other Petpooja report would deepen the finding.
+STEP 1 — IDENTIFY REPORT TYPE FROM COLUMN HEADERS:
+Read the first row (headers) of the CSV. Match to one of these Petpooja report types:
+- ITEM-WISE REPORT: columns like Item Name, Qty Sold, Gross Amount, Net Amount, Category
+- CATEGORY-WISE REPORT: columns like Category Name, Qty, Gross Sales, Net Sales, Orders
+- HOURLY SALES REPORT: columns like Hour/Time Slot, Item, Qty, Amount, Date
+- ALL RESTAURANT SALES REPORT: columns like Date, Gross Sales, Net Sales, Tax, Discount, Orders
+- DAY-WISE REPORT: columns like Day/Date, Orders, Gross, Net, Discount
+- DISCOUNT REPORT: columns like Discount Name, Coupon Code, Orders, Discount Amount, Gross, Net
+- CANCEL ORDER REPORT: columns like Order ID, Item Name, Qty, Amount, Reason, Date
+- ONLINE ORDER REPORT: columns like Platform (Zomato/Swiggy), Order ID, Amount, Status, Date
+- LOCALITY-WISE REPORT: columns like Locality/Area, Orders, Amount, Customers
+- INVOICE REPORT: columns like Invoice No, Date, Customer, Gross, Tax, Net
+- ORDER MASTER REPORT: columns like Order ID, Date, Customer, Items, Gross, Net, Platform
+- PAX SALES REPORT: columns like Biller, Orders, Pax, Gross, Net
+- TAG-WISE REPORT: columns like Tag Name, Qty, Gross, Net
+
+STEP 2 — GENERATE INSIGHTS SPECIFIC TO THAT REPORT TYPE:
+
+If ITEM-WISE REPORT: Focus on — top 5 items by qty sold (name them), top 5 by revenue (name them), bottom 5 dead-weight items (name them with their qty), items with high price but low sales, items with high qty but low revenue, star items to promote more. DO NOT give generic restaurant advice. Talk about SPECIFIC ITEMS by name.
+
+If CATEGORY-WISE REPORT: Focus on — which category earns most revenue (name it, exact amount), which sells most by qty, worst revenue-to-qty ratio category, underperforming categories to cut, is the menu balanced or dominated by 1-2 categories?
+
+If HOURLY SALES REPORT: Focus on — peak hour by revenue (exact time), dead hours with near-zero sales, morning vs afternoon vs evening split, which items sell in which hour, staffing implications, best and worst 2-hour window.
+
+If ALL RESTAURANT SALES / DAY-WISE REPORT: Focus on — revenue trend (growing/declining/flat), best day vs worst day (name the dates, show amounts), weekday vs weekend pattern, discount impact on net vs gross, daily average order value, platform split if present.
+
+If DISCOUNT REPORT: Focus on — total discount amount as % of gross revenue, most-used coupon (name it), most expensive offer (name it, show Rs. amount), orders with vs without discount count, AOV with discount vs without, which offers are loss-making.
+
+If CANCEL ORDER REPORT: Focus on — total revenue lost (Rs. amount), cancellation rate as %, most-cancelled item (name it, show count), peak cancellation time, cancellation by reason, pattern analysis (same items? same platform?).
+
+If ONLINE ORDER REPORT: Focus on — Zomato vs Swiggy exact order count and revenue split, online AOV, platform with better AOV, order acceptance rate, which platform is growing.
+
+If LOCALITY-WISE REPORT: Focus on — top 5 localities by order count (name them), top 5 by revenue (name them), localities with high orders but low revenue, delivery zone gaps.
+
+If INVOICE/ORDER MASTER REPORT: Focus on — average bill value, bill distribution (low/mid/high), peak billing periods, repeat customer patterns, payment method split.
+
+STEP 3 — USE REAL DATA VALUES EVERYWHERE:
+- Use actual item names, category names, locality names, coupon names FROM THE CSV DATA
+- Use actual numbers extracted from the rows — quantities, amounts, percentages
+- Never invent numbers. Calculate from actual data.
+- Every insight title must contain a real number from the data
 
 CRITICAL JSON RULES:
 - Respond ONLY with raw JSON. Zero text before or after. No markdown fences.
-- No rupee symbol anywhere — write Rs. instead.
-- No raw newlines inside string values — use the two characters backslash-n if needed.
-- No trailing commas. All arrays and objects must be properly closed.
-- Keep all string values short and clean.
+- No rupee symbol — write Rs. instead
+- No raw newlines inside string values
+- No trailing commas. All arrays properly closed.
 
 OUTPUT this exact JSON:
 {
-  "report_name": "string",
-  "period": "string",
-  "summary": "2-3 sentence executive summary with the top finding and numbers.",
+  "report_name": "detected report type name",
+  "period": "date range from data",
+  "summary": "2-3 sentence summary naming the specific report type and top finding with real numbers from the data.",
   "pulse": [
     {"label":"string","value":"string","sub":"string","signal":"up|down|warn|info"}
   ],
   "insights": [
     {
       "tag": "critical|opportunity|warning|insight|action",
-      "title": "headline with a specific number",
-      "body": "3-5 sentences with real numbers. Single line, no newlines.",
+      "title": "headline with a specific number from the actual data",
+      "body": "3-5 sentences. Real item/category/locality names from the data. Real numbers. No newlines.",
       "data_headers": ["col1","col2","col3"],
       "data_rows": [{"col1":"v","col2":"v","col3":"v"}],
       "needs_report": "exact Petpooja report name or null",
@@ -573,8 +607,12 @@ OUTPUT this exact JSON:
   "followup_questions": ["q1","q2","q3","q4","q5"]
 }`;
 
+  // Extract first 3 rows (headers + sample) to help AI detect report type fast
+  const csvLines    = primaryData.split('\n').filter(l => l.trim());
+  const csvHeaders  = csvLines.slice(0, 3).join('\n');
+
   try {
-    const raw = await callClaude(INSIGHTS_SYSTEM, `REPORT DATA:\n${primaryData}\n\n${analysisCtx ? 'CONTEXT: '+analysisCtx : ''}`, 5000);
+    const raw = await callClaude(INSIGHTS_SYSTEM, `COLUMN HEADERS (first 3 rows):\n${csvHeaders}\n\nFULL REPORT DATA:\n${primaryData}\n\n${analysisCtx ? 'CONTEXT: '+analysisCtx : ''}`, 5000);
     analysisFull  = raw;
     const parsed  = parseJSON(raw);
     lastInsights  = parsed.insights || [];
@@ -601,27 +639,68 @@ async function loadCharts(reportData, insights) {
     `${i}: [${ins.tag}] ${ins.title} | Data headers: ${(ins.data_headers||[]).join(', ')} | Rows: ${(ins.data_rows||[]).length}`
   ).join('\n');
 
-  const CHART_SYSTEM = `You are a data visualisation expert for restaurant analytics. Given insight summaries and raw report data, generate ONE chart specification per insight.
+  const CHART_SYSTEM = `You are a data visualisation expert for Petpooja restaurant reports. Identify the report type from the column headers, then generate charts using REAL VALUES from the actual data rows.
 
-RULES:
-- Use real numbers extracted from the report data.
-- Pick the best chart type: bar, line, doughnut, pie, horizontalBar, heatmap.
-- Use heatmap ONLY for hour-by-day or similar matrix data.
-- colorKey options: accent, green, red, blue, purple, amber.
-- prefix: use "Rs." for currency, "" otherwise. suffix: use "%" for percentages, "" otherwise.
-- Max 12 data points per dataset. Labels max 15 chars. Numbers only in data arrays.
-- Do NOT use rupee symbol. Do NOT use trailing commas.
-- Respond ONLY with a raw JSON array — no markdown, no text before or after.
+CHART SELECTION BY REPORT TYPE (read headers to detect):
 
-OUTPUT:
+ITEM-WISE REPORT (headers: Item Name, Qty Sold, Gross Amount etc):
+  - Chart 0: horizontalBar — top 10 items by Qty Sold. Labels=actual item names. Data=actual qty numbers.
+  - Chart 1: horizontalBar — top 10 items by Gross/Net Amount. Labels=actual item names. Data=actual amounts. prefix="Rs."
+  - Chart 2: doughnut — category revenue share if Category column exists. Labels=category names. Data=revenue per category.
+
+CATEGORY-WISE REPORT (headers: Category, Qty, Sales etc):
+  - Chart 0: doughnut — revenue by category. Labels=actual category names. Data=actual revenue amounts. prefix="Rs."
+  - Chart 1: bar — quantity sold by category. Labels=actual category names. Data=actual qty.
+
+HOURLY SALES REPORT (headers: Hour, Time, Qty, Amount etc):
+  - Chart 0: line — total sales by hour. Labels=actual hour slots from data. Data=total revenue per hour. prefix="Rs."
+  - Chart 1: bar — order count or qty by hour. Labels=actual hour slots. Data=actual qty/orders per hour.
+
+DAY-WISE / SALES REPORT (headers: Date, Day, Gross, Net, Orders etc):
+  - Chart 0: line — net revenue by date. Labels=actual dates. Data=actual net sales per day. prefix="Rs."
+  - Chart 1: bar — order count by day. Labels=actual dates or day names. Data=actual order counts.
+
+DISCOUNT REPORT (headers: Discount Name, Coupon, Amount, Orders etc):
+  - Chart 0: bar — discount amount by coupon name. Labels=actual coupon names from data. Data=actual discount amounts. prefix="Rs."
+  - Chart 1: bar — orders per coupon. Labels=actual coupon names. Data=actual order counts.
+
+CANCEL ORDER REPORT (headers: Item, Qty, Amount, Reason etc):
+  - Chart 0: horizontalBar — top cancelled items by qty. Labels=actual item names. Data=actual cancelled qty.
+  - Chart 1: doughnut — cancellations by reason if Reason column exists. Labels=actual reasons. Data=counts.
+
+ONLINE ORDER REPORT (headers: Platform, Zomato, Swiggy, Amount etc):
+  - Chart 0: doughnut — order count by platform. Labels=["Zomato","Swiggy"] or actual platform names. Data=actual counts.
+  - Chart 1: bar — revenue by platform per day if date available. prefix="Rs."
+
+LOCALITY-WISE REPORT (headers: Locality, Area, Orders, Amount etc):
+  - Chart 0: horizontalBar — top 10 localities by order count. Labels=actual locality names. Data=actual order counts.
+  - Chart 1: horizontalBar — top 10 localities by revenue. Labels=actual locality names. Data=actual amounts. prefix="Rs."
+
+INVOICE/ORDER MASTER REPORT:
+  - Chart 0: line or bar — daily revenue or order count trend. Labels=dates. Data=actual values.
+
+PAX/BILLER REPORT:
+  - Chart 0: bar — orders per biller. Labels=actual biller names. Data=actual order counts.
+
+TAG-WISE REPORT:
+  - Chart 0: horizontalBar — tags by revenue. Labels=actual tag names. Data=actual amounts. prefix="Rs."
+
+CRITICAL RULES:
+- Labels MUST be actual names from the CSV data (real item names, real category names, etc.)
+- Data arrays MUST contain actual numbers extracted from the CSV rows — not invented
+- Max 12 data points per chart. Numbers only in data array (no symbols)
+- No rupee symbol anywhere — use prefix "Rs." for currency fields
+- No trailing commas. Respond ONLY with raw JSON array. No markdown.
+- insight_index: assign 0,1,2... to match each insight block
+
 [
   {
     "insight_index": 0,
     "type": "bar|line|doughnut|pie|horizontalBar|heatmap",
-    "title": "string",
-    "labels": ["string"],
-    "datasets": [{"label":"string","data":[0],"colorKey":"accent"}],
-    "prefix": "",
+    "title": "string describing exactly what this chart shows",
+    "labels": ["real name from actual data"],
+    "datasets": [{"label":"string","data":[0],"colorKey":"accent|green|blue|purple|amber|red"}],
+    "prefix": "Rs.",
     "suffix": "",
     "rows": [],
     "cols": [],
@@ -629,7 +708,9 @@ OUTPUT:
   }
 ]`;
 
-  const userMsg = `REPORT DATA (extract numbers from this):\n${reportData.slice(0, 14000)}\n\nINSIGHTS TO CHART:\n${insightSummary}\n\nGenerate one chart per insight index (0 to ${insights.length-1}).`;
+  const csvLines2   = reportData.split('\n').filter(l => l.trim());
+  const csvHeaders2 = csvLines2.slice(0, 3).join('\n');
+  const userMsg = `COLUMN HEADERS (first 3 rows to identify report type):\n${csvHeaders2}\n\nFULL REPORT DATA:\n${reportData.slice(0, 14000)}\n\nINSIGHTS TO CHART:\n${insightSummary}\n\nGenerate one chart per insight index (0 to ${insights.length-1}).`;
 
   try {
     const raw    = await callClaude(CHART_SYSTEM, userMsg, 3000);
@@ -981,14 +1062,15 @@ async function sendFU(){
   document.getElementById('fu-send').disabled=false;
   if(hasExtra)clearExtra();
 }
-async function callClaude(system,userContent,maxTokens){
 
+// ══════════════════════════════════════
+//  API
+// ══════════════════════════════════════
+async function callClaude(system,userContent,maxTokens){
   const res = await fetch('https://restaurant-ai-analyst-1.onrender.com/analyze', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
       system: system,
       userContent: userContent,
       maxTokens: maxTokens
@@ -1000,7 +1082,6 @@ async function callClaude(system,userContent,maxTokens){
   }
 
   const data = await res.json();
-
   return data.text;
 }
 
